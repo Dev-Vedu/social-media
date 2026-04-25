@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
-// This is the Comment table in PostgreSQL
 @Entity
 @Table(name = "comments")
 @Data

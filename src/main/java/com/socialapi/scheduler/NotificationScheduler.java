@@ -16,13 +16,12 @@ public class NotificationScheduler {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    // Runs every 5 minutes (5 * 60 * 1000 milliseconds)
+    //5min
     @Scheduled(fixedRate = 300000)
     public void sweepPendingNotifications() {
 
         log.info("[CRON] Running notification sweep...");
 
-        // Find all users who have pending notifications
         Set<String> keys = redisTemplate.keys("user:*:pending_notifs");
 
         if (keys == null || keys.isEmpty()) {
@@ -32,25 +31,23 @@ public class NotificationScheduler {
 
         for (String key : keys) {
 
-            // Read all pending messages
+            //pending msg
             List<String> messages = redisTemplate.opsForList().range(key, 0, -1);
 
             if (messages == null || messages.isEmpty()) continue;
 
-            // Clear the list from Redis
+
             redisTemplate.delete(key);
 
-            // Get the userId from the key "user:{id}:pending_notifs"
             String userId = key.split(":")[1];
 
-            // Build a summarised message
             int total = messages.size();
             String firstMsg = messages.get(0);
 
             if (total == 1) {
                 log.info("[NOTIFICATION] Summarised Push Notification to User {}: {}", userId, firstMsg);
             } else {
-                // Extract bot name from first message
+                //extract bot name
                 String botName = "Unknown";
                 try {
                     int start = firstMsg.indexOf('\'') + 1;

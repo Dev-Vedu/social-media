@@ -14,30 +14,21 @@ public class NotificationService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    // ------------------------------------------------
-    // Called when a bot interacts with a user's post.
-    //
-    // If user has NOT received a notification in last
-    // 15 minutes → send immediately + set cooldown.
-    //
-    // If user HAS received one recently → push message
-    // into a Redis list (pending notifications).
-    // ------------------------------------------------
     public void notify(Long userId, String botName, Long postId) {
 
         String cooldownKey = "notif_cooldown:user_" + userId;
         String pendingKey  = "user:" + userId + ":pending_notifs";
         String message     = "Bot '" + botName + "' replied to your post #" + postId;
 
-        // setIfAbsent = SET NX (atomic check + set)
+        //selfabsent atomic
         Boolean firstTime = redisTemplate.opsForValue()
                 .setIfAbsent(cooldownKey, "1", Duration.ofMinutes(15));
 
         if (Boolean.TRUE.equals(firstTime)) {
-            // No cooldown was active → send immediately
+            //no cooldown
             log.info("[NOTIFICATION] Push Notification Sent to User {}: {}", userId, message);
         } else {
-            // Cooldown active → buffer it in a Redis list
+            //cooldown activate
             redisTemplate.opsForList().rightPush(pendingKey, message);
             log.info("[NOTIFICATION] Buffered for User {}: {}", userId, message);
         }

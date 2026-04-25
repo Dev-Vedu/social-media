@@ -16,28 +16,18 @@ public class GuardrailService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    // ------------------------------------------------
-    // Virality Score
-    // key:  post:{postId}:virality_score
-    // ------------------------------------------------
+   //score
     public void incrementVirality(Long postId, long points) {
         String key = "post:" + postId + ":virality_score";
         redisTemplate.opsForValue().increment(key, points);
         log.info("Virality updated: post {} +{} points", postId, points);
     }
 
-    // ------------------------------------------------
-    // Horizontal Cap — max 100 bot replies per post
-    // key:  post:{postId}:bot_count
-    //
-    // We use a Lua script so the check + increment
-    // happen ATOMICALLY (no race condition possible).
-    // If two bots hit at the same time, only one wins.
-    // ------------------------------------------------
+    //horizontal cap
     public boolean tryIncrementBotCount(Long postId) {
         String key = "post:" + postId + ":bot_count";
 
-        // Lua script runs as one atomic operation in Redis
+        // Lua script redis
         String lua =
             "local count = tonumber(redis.call('GET', KEYS[1])) or 0 " +
             "if count >= 100 then " +
@@ -53,15 +43,7 @@ public class GuardrailService {
         return Long.valueOf(1L).equals(result);
     }
 
-    // ------------------------------------------------
-    // Cooldown Cap — bot cannot reply to same human
-    // more than once in 10 minutes
-    // key:  cooldown:bot_{botId}:human_{humanId}
-    //
-    // setIfAbsent = SET NX in Redis (atomic)
-    // returns true  → no cooldown, interaction allowed
-    // returns false → cooldown active, block the bot
-    // ------------------------------------------------
+   //cooldown
     public boolean checkAndSetCooldown(Long botId, Long humanId) {
         String key = "cooldown:bot_" + botId + ":human_" + humanId;
         Boolean set = redisTemplate.opsForValue()

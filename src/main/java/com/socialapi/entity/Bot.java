@@ -3,7 +3,6 @@ package com.socialapi.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
-// This is the Bot table in PostgreSQL
 @Entity
 @Table(name = "bots")
 @Data

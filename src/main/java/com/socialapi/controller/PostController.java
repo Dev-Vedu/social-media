@@ -27,9 +27,7 @@ public class PostController {
     private final GuardrailService guardrailService;
     private final NotificationService notificationService;
 
-    // ------------------------------------------------
-    // POST /api/posts  →  Create a new post
-    // ------------------------------------------------
+   //for new post
     @PostMapping
     public ResponseEntity<Post> createPost(@RequestBody Map<String, Object> body) {
 
@@ -45,16 +43,12 @@ public class PostController {
         Post saved = postRepository.save(post);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
-
-    // ------------------------------------------------
-    // POST /api/posts/{postId}/comments  →  Add a comment
-    // ------------------------------------------------
+//for comment
     @PostMapping("/{postId}/comments")
     public ResponseEntity<Object> addComment(
             @PathVariable Long postId,
             @RequestBody Map<String, Object> body) {
-
-        // Check post exists
+        //post exit
         Post post = postRepository.findById(postId).orElse(null);
         if (post == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found");
@@ -64,7 +58,6 @@ public class PostController {
         String authorType = body.get("authorType").toString();
         String content   = body.get("content").toString();
 
-        // Figure out depth level
         int depth = 1; // top-level comment
         if (body.containsKey("parentCommentId") && body.get("parentCommentId") != null) {
             Long parentId = Long.valueOf(body.get("parentCommentId").toString());
@@ -74,16 +67,16 @@ public class PostController {
             }
         }
 
-        // ---- If author is a BOT, run all 3 guardrail checks ----
+        //3 guardrail
         if ("BOT".equals(authorType)) {
 
-            // Guardrail 1 - Vertical Cap: depth cannot exceed 20
+            //vertical
             if (depth > 20) {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                         .body("Rejected: Comment thread is too deep (max 20 levels)");
             }
 
-            // Guardrail 2 - Cooldown Cap: same bot cannot reply to same human twice in 10 min
+            //cooldown
             if ("USER".equals(post.getAuthorType())) {
                 boolean cooldownOk = guardrailService.checkAndSetCooldown(authorId, post.getAuthorId());
                 if (!cooldownOk) {
@@ -92,17 +85,17 @@ public class PostController {
                 }
             }
 
-            // Guardrail 3 - Horizontal Cap: max 100 bot replies per post (atomic Lua script)
+            //horizontal
             boolean allowed = guardrailService.tryIncrementBotCount(postId);
             if (!allowed) {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                         .body("Rejected: Post has reached max 100 bot replies");
             }
 
-            // Update virality score in Redis: bot reply = +1
+            //+1point
             guardrailService.incrementVirality(postId, 1);
 
-            // Send notification to post owner (if human)
+            //man-notification
             if ("USER".equals(post.getAuthorType())) {
                 String botName = botRepository.findById(authorId)
                         .map(b -> b.getName()).orElse("Unknown Bot");
@@ -110,11 +103,10 @@ public class PostController {
             }
 
         } else {
-            // Human comment: update virality +50
+            //human comment
             guardrailService.incrementVirality(postId, 50);
         }
 
-        // Save the comment to PostgreSQL
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setAuthorId(authorId);
@@ -130,9 +122,7 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    // ------------------------------------------------
-    // POST /api/posts/{postId}/like  →  Like a post
-    // ------------------------------------------------
+    //like
     @PostMapping("/{postId}/like")
     public ResponseEntity<Object> likePost(@PathVariable Long postId,
                                            @RequestBody Map<String, Object> body) {
@@ -142,12 +132,11 @@ public class PostController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found");
         }
 
-        // Only human likes count for virality
         String authorType = body.get("authorType").toString();
         if ("USER".equals(authorType)) {
             post.setLikeCount(post.getLikeCount() + 1);
             postRepository.save(post);
-            // Human like = +20 virality points
+            //+20
             guardrailService.incrementVirality(postId, 20);
         }
 

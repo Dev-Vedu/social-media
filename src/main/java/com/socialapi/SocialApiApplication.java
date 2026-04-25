@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling  // needed for the CRON sweeper in Phase 3
+@EnableScheduling
 public class SocialApiApplication {
 
     public static void main(String[] args) {
